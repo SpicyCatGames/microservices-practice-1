@@ -3,6 +3,7 @@ using MicroRabbit.Domain.Core.Bus;
 using MicroRabbit.Domain.Core.Commands;
 using MicroRabbit.Domain.Core.Events;
 using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
 
@@ -41,7 +42,7 @@ public sealed class RabbitMQBus : IEventBus
         await channel.BasicPublishAsync("", eventName, body);
     }
 
-    public Task SubscribeAsync<T, TH>()
+    public async Task SubscribeAsync<T, TH>()
         where T : Event
         where TH : IEventHandler<T>
     {
@@ -65,6 +66,53 @@ public sealed class RabbitMQBus : IEventBus
 
         _handlers[eventName].Add(handlerType);
 
-        StartBasicConsumeAsync<T>();
+        await StartBasicConsumeAsync<T>();
+    }
+
+    private async Task StartBasicConsumeAsync<T>() where T : Event
+    {
+        var factory = new ConnectionFactory() { HostName = "localhost", Port = 5672 };
+        var connection = await factory.CreateConnectionAsync();
+        var channel = await connection.CreateChannelAsync();
+
+        var eventName = typeof(T).Name;
+
+        await channel.QueueDeclareAsync(eventName, false, false, false, null);
+
+        var consumer = new AsyncEventingBasicConsumer(channel);
+        consumer.ReceivedAsync += ConsumerReceived;
+
+        await channel.BasicConsumeAsync(eventName, true, consumer);
+    }
+
+    private async Task ConsumerReceived(object sender, BasicDeliverEventArgs e)
+    {
+        var eventName = e.RoutingKey;
+        var message = System.Text.Encoding.UTF8.GetString(e.Body.Span);
+
+        try
+        {
+            await ProcessEvent(eventName, message).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+        }
+    }
+
+    private async Task ProcessEvent(string eventName, string message)
+    {
+        if (_handlers.ContainsKey(eventName))
+        {
+            var subscriptions = _handlers[eventName];
+            foreach (var subscription in subscriptions)
+            {
+                var handler = Activator.CreateInstance(subscription);
+                if (handler == null) continue;
+                var eventType = _eventTypes.Single(t => t.Name == eventName);
+                var @event = JsonSerializer.Deserialize(message, eventType);
+                var concreteType = typeof(IEventHandler<>).MakeGenericType(eventType);
+                await (Task)concreteType.GetMethod("Handle").Invoke(handler, new object[] { @event });
+            }
+        }
     }
 }
