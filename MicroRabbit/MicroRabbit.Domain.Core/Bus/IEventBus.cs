@@ -10,5 +10,5 @@ public interface IEventBus
 
     Task SubscribeAsync<T, TH>()
         where T : Event
-        where TH : IEventHandler;
+        where TH : IEventHandler<T>;
 }

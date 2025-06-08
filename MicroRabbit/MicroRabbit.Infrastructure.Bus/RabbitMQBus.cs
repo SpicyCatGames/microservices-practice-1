@@ -43,7 +43,7 @@ public sealed class RabbitMQBus : IEventBus
 
     public Task SubscribeAsync<T, TH>()
         where T : Event
-        where TH : IEventHandler
+        where TH : IEventHandler<T>
     {
         var eventName = typeof(T).Name;
         var handlerType = typeof(TH);
