@@ -45,6 +45,26 @@ public sealed class RabbitMQBus : IEventBus
         where T : Event
         where TH : IEventHandler
     {
-        throw new NotImplementedException();
+        var eventName = typeof(T).Name;
+        var handlerType = typeof(TH);
+
+        if (!_eventTypes.Contains(typeof(T)))
+        {
+            _eventTypes.Add(typeof(T));
+        }
+
+        if (!_handlers.ContainsKey(eventName))
+        {
+            _handlers.Add(eventName, new List<Type>());
+        }
+
+        if (_handlers[eventName].Any(s => s.GetType() == handlerType))
+        {
+            throw new ArgumentException($"Handler Type {handlerType.Name} is already registered for {eventName}", nameof(handlerType));
+        }
+
+        _handlers[eventName].Add(handlerType);
+
+        StartBasicConsumeAsync<T>();
     }
 }
