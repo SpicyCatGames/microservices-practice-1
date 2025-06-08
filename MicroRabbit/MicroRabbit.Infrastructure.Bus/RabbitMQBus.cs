@@ -2,23 +2,46 @@
 using MicroRabbit.Domain.Core.Bus;
 using MicroRabbit.Domain.Core.Commands;
 using MicroRabbit.Domain.Core.Events;
+using RabbitMQ.Client;
+using System.Text;
+using System.Text.Json;
 
 namespace MicroRabbit.Infrastructure.Bus;
 public sealed class RabbitMQBus : IEventBus
 {
     private readonly IMediator _mediator;
+    private readonly Dictionary<string, List<Type>> _handlers;
+    private readonly List<Type> _eventTypes;
+
+    public RabbitMQBus(IMediator mediator)
+    {
+        _mediator = mediator;
+        _handlers = [];
+        _eventTypes = [];
+    }
 
     public Task SendCommand<T>(T command) where T : Command
     {
         return _mediator.Send(command);
     }
 
-    public void Publish<T>(T @event) where T : Event
+    public async Task PublishAsync<T>(T @event) where T : Event
     {
-        throw new NotImplementedException();
+        var factory = new ConnectionFactory() { HostName = "localhost", Port = 5672 };
+        using var connection = await factory.CreateConnectionAsync();
+        using var channel = await connection.CreateChannelAsync();
+
+        var eventName = @event.GetType().Name;
+
+        await channel.QueueDeclareAsync(eventName, false, false, false);
+
+        var message = JsonSerializer.Serialize(@event);
+        var body = Encoding.UTF8.GetBytes(message);
+
+        await channel.BasicPublishAsync("", eventName, body);
     }
 
-    public void Subscribe<T, TH>()
+    public Task SubscribeAsync<T, TH>()
         where T : Event
         where TH : IEventHandler
     {
