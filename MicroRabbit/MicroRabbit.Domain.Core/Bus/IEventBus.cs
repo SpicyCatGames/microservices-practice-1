@@ -1,4 +1,6 @@
-﻿namespace MicroRabbit.Domain.Core.Bus;
+﻿using MicroRabbit.Domain.Core.Commands;
+
+namespace MicroRabbit.Domain.Core.Bus;
 public interface IEventBus
 {
     Task SendCommand<T>(T command) where T : Command;
