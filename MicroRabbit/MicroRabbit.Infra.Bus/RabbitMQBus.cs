@@ -7,7 +7,7 @@ using RabbitMQ.Client.Events;
 using System.Text;
 using System.Text.Json;
 
-namespace MicroRabbit.Infrastructure.Bus;
+namespace MicroRabbit.Infra.Bus;
 public sealed class RabbitMQBus : IEventBus
 {
     private readonly IMediator _mediator;
