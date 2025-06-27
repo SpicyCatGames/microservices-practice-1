@@ -3,6 +3,7 @@
 using MicroRabbit.Banking.Data.Context;
 using MicroRabbit.Infra.IoC;
 using Microsoft.EntityFrameworkCore;
+using System;
 
 namespace MicroRabbit.Banking.Api;
 
@@ -40,6 +41,19 @@ public class Program
 
 
         app.MapControllers();
+
+
+        using (var scope = app.Services.CreateScope())
+        {
+            var dbContext = scope.ServiceProvider.GetRequiredService<BankingDbContext>();
+
+            // Check for pending migrations and apply them if any
+            if (dbContext.Database.GetPendingMigrations().Any())
+            {
+                dbContext.Database.Migrate();
+            }
+        }
+
 
         app.Run();
     }
