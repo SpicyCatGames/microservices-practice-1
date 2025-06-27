@@ -14,11 +14,16 @@ public class Program
 
         // Add services to the container.
         {
+            builder.Services.AddDbContext<BankingDbContext>(options =>
+            {
+                options.UseSqlServer(builder.Configuration.GetConnectionString("BankingDbConnection"));
+            });
+
             builder.Services.AddControllers();
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             builder.Services.AddOpenApi();
 
-            RegisterServices(builder);
+            RegisterServices(builder.Services);
         }
 
         var app = builder.Build();
@@ -39,8 +44,8 @@ public class Program
         app.Run();
     }
 
-    private static void RegisterServices(WebApplicationBuilder builder)
+    private static void RegisterServices(IServiceCollection services)
     {
-        DependencyContainer.RegisterServices(builder);
+        DependencyContainer.RegisterServices(services);
     }
 }
