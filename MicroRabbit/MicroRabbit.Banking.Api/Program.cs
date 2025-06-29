@@ -4,6 +4,7 @@ using MicroRabbit.Banking.Data.Context;
 using MicroRabbit.Infra.IoC;
 using Microsoft.EntityFrameworkCore;
 using System;
+using System.Reflection;
 
 namespace MicroRabbit.Banking.Api;
 
@@ -21,8 +22,16 @@ public class Program
             });
 
             builder.Services.AddControllers();
-            // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-            builder.Services.AddOpenApi();
+            builder.Services.AddSwaggerGen(c =>
+            {
+                c.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+                {
+                    Title = "Banking Microservice",
+                    Version = "v1"
+                });
+            });
+
+            builder.Services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(Program).Assembly));
 
             RegisterServices(builder.Services);
         }
@@ -32,7 +41,8 @@ public class Program
         // Configure the HTTP request pipeline.
         if (app.Environment.IsDevelopment())
         {
-            app.MapOpenApi();
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
 
         app.UseHttpsRedirection();
@@ -41,7 +51,6 @@ public class Program
 
 
         app.MapControllers();
-
 
         using (var scope = app.Services.CreateScope())
         {
